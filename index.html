@@ -20583,9 +20583,9 @@ tr:hover .row-acts{opacity:1}
       Nhập JSON
       <input type="file" accept=".json" onchange="importJSON(event)" style="display:none">
     </label>
-    <button class="btn" onclick="resetAllData()" title="Xóa cache, tải lại dữ liệu gốc" style="color:var(--red);border-color:#FECACA">
+    <button class="btn" onclick="resetAllData()" title="Làm mới giao diện (không xóa dữ liệu)" style="color:var(--blue);border-color:#BFDBFE">
       <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-      Tải lại
+      Làm mới
     </button>
     <button class="btn btn-primary" onclick="openModal()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -21285,15 +21285,23 @@ function renderPanel(r){
   const evs=r.evidences||[];
   const eviHtml=evs.length===0
     ?`<div class="evi-empty">📎 Chưa có minh chứng nào được đính kèm</div>`
-    :evs.map((ev,i)=>`
-      <div class="evi-item">
+    :evs.map((ev,i)=>{
+      const isUrl=s=>s&&/^https?:\/\//i.test(s.trim());
+      const labelIsUrl=isUrl(ev.label);
+      const labelHtml=labelIsUrl
+        ?`<a href="${ev.label.trim()}" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;word-break:break-all">🔗 ${ev.label.trim()}</a>`
+        :`📎 ${ev.label||"Minh chứng "+(i+1)}`;
+      const linkSVG=`<svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+      const linkHtml=ev.link?`<div class="evi-link">${linkSVG}<a href="${ev.link.trim()}" target="_blank" rel="noopener">${ev.link.trim()}</a></div>`:"";
+      return `<div class="evi-item">
         <div class="evi-item-top">
-          <span class="evi-lbl">📎 ${ev.label||"Minh chứng "+(i+1)}</span>
+          <span class="evi-lbl">${labelHtml}</span>
           <button class="evi-del" onclick="deleteEvi(${r.id},${i})" aria-label="Xoá"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
         </div>
         ${ev.desc?`<div class="evi-desc">${ev.desc}</div>`:""}
-        ${ev.link?`<div class="evi-link"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><a href="${ev.link}" target="_blank" rel="noopener">${ev.link}</a></div>`:""}
-      </div>`).join("");
+        ${linkHtml}
+      </div>`;
+    }).join("");
   const addForm=addEviMode?`
     <div class="evi-form">
       <input type="text" id="eviLabel" placeholder="Tên minh chứng (Biên bản sự cố, Phiếu đề nghị, Tường trình…)">
@@ -21682,11 +21690,7 @@ function toggleDone(id){
 }
 
 function resetAllData(){
-  if(!confirm("⚠️ Xóa toàn bộ dữ liệu đã lưu và tải lại từ đầu?\n\nThao tác này không thể hoàn tác."))return;
-  ['nhatky_gmhs_v1','nhatky_gmhs_v2','nhatky_gmhs_v3','nhatky_gmhs_v4',
-   'nhatky_gmhs_v5','nhatky_gmhs_v6','nhatky_gmhs_v7','nhatky_cats_v1','nhatky_results_v1'].forEach(k=>{
-    try{localStorage.removeItem(k)}catch(e){}
-  });
+  if(!confirm("🔄 Làm mới giao diện?\n\nDữ liệu của bạn sẽ được GIỮ NGUYÊN, chỉ tải lại trang để cập nhật hiển thị."))return;
   location.reload();
 }
 
