@@ -21685,7 +21685,7 @@ function editEntry(id){openModal(id)}
 function delEntry(id){
   if(!confirm("Xoá mục này?"))return;
   data=data.filter(x=>x.id!==id);
-  save();renderStats();renderPills();render();updateNotifyBadge();showToast("Đã xoá");
+  save();renderStats();renderPills();render();updateDtBadge();updateNotifyBadge();showToast("Đã xoá");
 }
 
 /* ── Panel minh chứng ── */
@@ -21979,8 +21979,23 @@ function switchMainTab(tab){
   document.getElementById('pageThongKe').style.display   = tab==='thongke'   ? '' : 'none';
   document.getElementById('tabNhatKy').classList.toggle('active',  tab==='nhatky');
   document.getElementById('tabDowntime').classList.toggle('active', tab==='downtime');
-  document.getElementById('tabThongKe').classList.toggle('active',  tab==='thongke');
-  if(tab==='downtime'){renderDtCatFilter();renderDtOverview();renderDowntime();}
+  document.getElementById('tabThongKe')?.classList.toggle('active',  tab==='thongke');
+  if(tab==='downtime'){
+    try{
+      renderDtCatFilter();renderDtOverview();renderDowntime();
+    }catch(err){
+      console.error('Lỗi render Downtime:', err);
+      const tbody=document.getElementById('dtTbody');
+      const empty=document.getElementById('dtEmpty');
+      const cnt=document.getElementById('dtCount');
+      if(tbody) tbody.innerHTML='';
+      if(cnt) cnt.textContent='Lỗi';
+      if(empty){
+        empty.style.display='block';
+        empty.innerHTML='<div style="padding:30px;text-align:center;color:#c0392b;font-family:monospace;font-size:13px;white-space:pre-wrap">⚠️ LỖI HIỂN THỊ DOWNTIME:\n'+(err && err.message ? err.message : String(err))+'\n\nVui lòng chụp màn hình dòng này gửi lại để được hỗ trợ.</div>';
+      }
+    }
+  }
   if(tab==='thongke'){renderThongKeFilter();renderThongKe();}
 }
 
@@ -22201,7 +22216,7 @@ function importJSON(event){
         if(!r.pri) r.pri='Bình thường';
       });
       saveAll();
-      renderStats();renderPills();render();
+      renderStats();renderPills();render();updateDtBadge();updateNotifyBadge();
       showToast(`✅ Đã nhập ${data.length} mục công việc`);
     }catch(err){showToast('❌ Lỗi đọc file: '+err.message);}
   };
