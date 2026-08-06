@@ -20978,6 +20978,7 @@ const PDOT={"Khẩn cấp":"🔴","Quan trọng":"🟠","Bình thường":"🟡"
 const PORD={"Khẩn cấp":0,"Quan trọng":1,"Bình thường":2,"Thấp":3};
 
 let userCats=[],userResults=[],data=[],editId=null,activeCat="Tất cả",panelId=null,addEviMode=false,manageTab='cat';
+let deletedIds=[]; // các id đã xoá trong phiên làm việc này, để không bị "hồi sinh" khi merge với localStorage
 
 function loadCats(){
   // Nếu đã có trong bộ nhớ thì không cần đọc lại (tránh overwrite)
@@ -21419,6 +21420,38 @@ function updateNotifyBadge(){
   else{badge.style.display='none';}
 }
 function saveAll(){
+  // Trước khi ghi đè, đọc lại bản mới nhất trong localStorage và hợp nhất (merge)
+  // để tránh trường hợp mở nhiều tab/cửa sổ khiến tab cũ ghi đè mất dữ liệu tab mới.
+  try{
+    var raw=localStorage.getItem(LS);
+    if(raw){
+      var stored=JSON.parse(raw);
+      if(stored&&Array.isArray(stored.data)){
+        var map={};
+        // 1) nạp dữ liệu đang có trong localStorage (có thể do tab khác vừa lưu)
+        stored.data.forEach(function(item){
+          if(deletedIds.indexOf(item.id)===-1) map[item.id]=item;
+        });
+        // 2) đè bằng dữ liệu hiện tại của tab này (ưu tiên bản mới nhất đang chỉnh sửa)
+        data.forEach(function(item){ map[item.id]=item; });
+        data=Object.keys(map).map(function(k){return map[k];});
+        data.sort(function(a,b){return (a.id||0)-(b.id||0);});
+      }
+      // hợp nhất danh mục (cats) theo tên, ưu tiên bản hiện tại
+      if(stored&&Array.isArray(stored.cats)&&stored.cats.length){
+        var cmap={};
+        stored.cats.forEach(function(c){cmap[c.name]=c;});
+        userCats.forEach(function(c){cmap[c.name]=c;});
+        userCats=Object.keys(cmap).map(function(k){return cmap[k];});
+      }
+      // hợp nhất danh sách kết quả (results), gộp không trùng lặp
+      if(stored&&Array.isArray(stored.results)&&stored.results.length){
+        var rset={};
+        stored.results.concat(userResults).forEach(function(r){rset[r]=true;});
+        userResults=Object.keys(rset);
+      }
+    }
+  }catch(e){}
   window._appStore={data:JSON.parse(JSON.stringify(data)),cats:JSON.parse(JSON.stringify(userCats)),results:[...userResults]};
   try{localStorage.setItem(LS,JSON.stringify({data,cats:userCats,results:userResults}));localStorage.removeItem('nhatky_cats_v1');localStorage.removeItem('nhatky_results_v1');}catch(e){}
 }
@@ -21714,6 +21747,7 @@ function editEntry(id){openModal(id)}
 function delEntry(id){
   if(!confirm("Xoá mục này?"))return;
   data=data.filter(x=>x.id!==id);
+  deletedIds.push(id);
   save();renderStats();renderPills();render();updateDtBadge();updateNotifyBadge();showToast("Đã xoá");
 }
 
