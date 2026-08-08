@@ -20411,7 +20411,9 @@ tr:hover .row-acts{opacity:1}
 .modal{background:var(--bg2);border-radius:var(--rxl);padding:0;width:100%;max-width:640px;
   max-height:92vh;overflow:hidden;display:flex;flex-direction:column;
   box-shadow:0 32px 80px rgba(0,0,0,.2),0 4px 20px rgba(15,155,142,.15);
-  border:1px solid rgba(15,155,142,.2);animation:mIn .22s cubic-bezier(.4,0,.2,1)}
+  border:1px solid rgba(15,155,142,.2);animation:mIn .22s cubic-bezier(.4,0,.2,1);
+  transition:max-width .18s ease,max-height .18s ease}
+.modal.modal-expanded{max-width:min(1040px,96vw);max-height:96vh}
 @keyframes mIn{from{transform:translateY(14px) scale(.97);opacity:0}to{transform:none;opacity:1}}
 .modal-hd{padding:22px 26px 18px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--teal-lt),var(--bg2));flex-shrink:0}
@@ -20841,15 +20843,20 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
 
 <!-- ══ MODAL THÊM/SỬA ══ -->
 <div class="modal-bg" id="modalBg" onclick="modalBgClose(event)">
-  <div class="modal">
+  <div class="modal" id="mainModalBox">
     <div class="modal-hd">
       <div class="modal-ttl">
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span id="modalTitle">Thêm công việc mới</span>
       </div>
-      <button class="modal-close" onclick="closeModal()" aria-label="Đóng">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="modal-close" onclick="toggleModalExpand()" aria-label="Phóng to" title="Phóng to / thu nhỏ cửa sổ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3m11-5v3a2 2 0 01-2 2h-3"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeModal()" aria-label="Đóng">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="fgrid">
@@ -20922,7 +20929,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
             <button type="button" class="evi-type-btn" data-type="file" onclick="eviSwitchType('file')" style="padding:7px 14px;border-radius:20px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#374151;font-size:13px;font-weight:600;cursor:pointer">📁 File</button>
             <button type="button" class="evi-type-btn" data-type="camera" onclick="eviSwitchType('camera')" style="padding:7px 14px;border-radius:20px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#374151;font-size:13px;font-weight:600;cursor:pointer">📷 Camera</button>
           </div>
-          <div id="eviPanelLink"><input type="url" id="fEviLink" placeholder="https://drive.google.com/... hoặc link HIS, SharePoint…"><div class="note-row" style="margin-top:6px">💡 Thêm nhiều minh chứng sau khi lưu qua nút 📎 trên bảng.</div></div>
+          <div id="eviPanelLink"><div style="display:flex;gap:6px"><input type="url" id="fEviLink" placeholder="https://drive.google.com/... hoặc link HIS, SharePoint…" style="flex:1"><button type="button" onclick="var v=(document.getElementById('fEviLink')||{}).value.trim();if(v)window.open(v,'_blank');else showToast('Chưa nhập link');" title="Mở link này ở tab mới để kiểm tra" style="flex-shrink:0;padding:0 14px;border-radius:var(--r);border:1.5px solid #93C5FD;background:#EFF6FF;color:#1D4ED8;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">↗ Mở</button></div><div class="note-row" style="margin-top:6px">💡 Thêm nhiều minh chứng sau khi lưu qua nút 📎 trên bảng.</div></div>
           <div id="eviPanelGallery" style="display:none"><div id="eviGalleryPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div><label style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F0FDF4;border:1.5px dashed #6EE7B7;border-radius:var(--r);cursor:pointer;color:#065F46;font-size:13px;font-weight:600">🖼️ Chọn ảnh<input type="file" id="fEviGalleryInput" accept="image/*" multiple style="display:none" onchange="eviGalleryPreview(this)"></label></div>
           <div id="eviPanelFile" style="display:none"><div id="eviFilePreview" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><label style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#EFF6FF;border:1.5px dashed #93C5FD;border-radius:var(--r);cursor:pointer;color:#1E40AF;font-size:13px;font-weight:600">📁 Chọn file (có thể chọn nhiều)<input type="file" id="fEviFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" onchange="eviFilePreview(this)"></label></div>
           <div id="eviPanelCamera" style="display:none">
@@ -21857,6 +21864,10 @@ function saveEntry(){
   if(mainTab==='downtime'){renderDtOverview();renderDowntime();}
 }
 function editEntry(id){openModal(id)}
+function toggleModalExpand(){
+  var box=document.getElementById('mainModalBox');
+  if(box)box.classList.toggle('modal-expanded');
+}
 function delEntry(id){
   if(!confirm("Xoá mục này?"))return;
   data=data.filter(x=>x.id!==id);
@@ -21913,7 +21924,7 @@ function renderPanel(r){
         <button type="button" class="pevi-type-btn" data-type="file" onclick="peviSwitch('file')" style="padding:6px 12px;border-radius:16px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#374151;font-size:12px;font-weight:600;cursor:pointer">📁 File</button>
         <button type="button" class="pevi-type-btn" data-type="camera" onclick="peviSwitch('camera')" style="padding:6px 12px;border-radius:16px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#374151;font-size:12px;font-weight:600;cursor:pointer">📷 Camera</button>
       </div>
-      <div id="peviPanelLink"><input type="url" id="eviLink" placeholder="Link Google Drive, HIS, SharePoint…"></div>
+      <div id="peviPanelLink"><div style="display:flex;gap:6px"><input type="url" id="eviLink" placeholder="Link Google Drive, HIS, SharePoint…" style="flex:1"><button type="button" onclick="var v=(document.getElementById('eviLink')||{}).value.trim();if(v)window.open(v,'_blank');else showToast('Chưa nhập link');" title="Mở link này ở tab mới để kiểm tra" style="flex-shrink:0;padding:0 12px;border-radius:var(--r);border:1.5px solid #93C5FD;background:#EFF6FF;color:#1D4ED8;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">↗ Mở</button></div></div>
       <div id="peviPanelGallery" style="display:none"><div id="peviGalleryPreview" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div><label style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:#F0FDF4;border:1.5px dashed #6EE7B7;border-radius:var(--r);cursor:pointer;color:#065F46;font-size:12px;font-weight:600">🖼️ Chọn ảnh<input type="file" id="peviGalleryInput" accept="image/*" multiple style="display:none" onchange="peviGalleryPreview(this)"></label></div>
       <div id="peviPanelFile" style="display:none"><div id="peviFilePreview" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px"></div><label style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:#EFF6FF;border:1.5px dashed #93C5FD;border-radius:var(--r);cursor:pointer;color:#1E40AF;font-size:12px;font-weight:600">📁 Chọn file (có thể chọn nhiều)<input type="file" id="peviFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" multiple style="display:none" onchange="peviFilePreview(this)"></label></div>
       <div id="peviPanelCamera" style="display:none">
