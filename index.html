@@ -20595,6 +20595,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
       <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
       Làm mới
     </button>
+    <button class="btn" onclick="openBackupPanel()" title="Xem và khôi phục các bản sao lưu tự động" style="color:#7C3AED;border-color:#DDD6FE">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+      Lịch sử
+    </button>
     <button class="btn" onclick="openNotifyPanel()" style="position:relative" title="Thông báo phiếu theo ngày">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       Thông báo
@@ -20962,12 +20966,31 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
   </div>
 </div>
 
+<!-- ══ BACKUP HISTORY MODAL ══ -->
+<div class="manage-bg" id="backupBg" onclick="if(event.target===this)closeBackupPanel()">
+  <div class="manage-modal">
+    <div class="manage-hd">
+      <div class="manage-ttl">🕒 Lịch sử sao lưu tự động</div>
+      <button class="modal-close" onclick="closeBackupPanel()" aria-label="Đóng">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:8px 16px;color:#6B7280;font-size:13px;border-bottom:1px solid #F3F4F6">Hệ thống tự động lưu lại tối đa 25 bản gần nhất mỗi khi có thay đổi. Nếu phát hiện thiếu dữ liệu, hãy chọn bản sao lưu gần nhất còn đủ dữ liệu để khôi phục.</div>
+    <div class="manage-body" id="backupListBody" style="max-height:420px;overflow:auto"></div>
+    <div class="manage-ft">
+      <button class="btn btn-sm" onclick="closeBackupPanel()">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const LS='nhatky_gmhs_v7';
 const LS_CATS='nhatky_cats_v1';
 const LS_RESULTS='nhatky_results_v1';
+const LS_BACKUPS='nhatky_gmhs_v7_backups';
+const MAX_BACKUPS=25;
 
 const DEFAULT_CATS=[{"name":"Sự cố","icon":"📋","cls":"c-dyn0"},{"name":"Phòng HCQT","icon":"📋","cls":"c-dyn1"},{"name":"Khoa Dược","icon":"📋","cls":"c-dyn2"},{"name":"Khoa KSNK","icon":"📋","cls":"c-dyn3"},{"name":"Phòng QLCL","icon":"📋","cls":"c-dyn4"},{"name":"Phòng CĐT","icon":"📋","cls":"c-dyn5"},{"name":"Phòng ĐD","icon":"📋","cls":"c-dyn6"},{"name":"TD trực","icon":"📋","cls":"c-dyn7"},{"name":"TD bù","icon":"📋","cls":"c-dyn0"},{"name":"Phòng VTYT","icon":"📋","cls":"c-dyn1"},{"name":"Công ty","icon":"📋","cls":"c-dyn2"},{"name":"Vi phạm","icon":"📋","cls":"c-dyn3"},{"name":"Khen thưởng","icon":"📋","cls":"c-dyn4"},{"name":"Quy trình","icon":"📋","cls":"c-dyn5"},{"name":"Phản hồi chất lượng sản phẩm","icon":"📋","cls":"c-dyn6"}];
 const DEFAULT_RESULTS=["Đã xử lý xong","Rồi","Đang xử lý","Đang chờ phản hồi","Cá nhân đền bù","Hoạt động bình thường","Gửi bảo hành","Lắp xong","Nộp xong","Đã gửi công ty","Đã nhận","Đã thực hiện"];
@@ -21454,6 +21477,58 @@ function saveAll(){
   }catch(e){}
   window._appStore={data:JSON.parse(JSON.stringify(data)),cats:JSON.parse(JSON.stringify(userCats)),results:[...userResults]};
   try{localStorage.setItem(LS,JSON.stringify({data,cats:userCats,results:userResults}));localStorage.removeItem('nhatky_cats_v1');localStorage.removeItem('nhatky_results_v1');}catch(e){}
+  pushBackupSnapshot();
+}
+// Lưu một bản backup xoay vòng (tối đa MAX_BACKUPS bản) mỗi lần lưu dữ liệu,
+// để nếu chẳng may mất dữ liệu (do nhiều tab, xoá cache...) vẫn có thể khôi phục lại.
+function pushBackupSnapshot(){
+  try{
+    var list=[];
+    try{var raw=localStorage.getItem(LS_BACKUPS);if(raw)list=JSON.parse(raw)||[];}catch(e){list=[];}
+    var count=Array.isArray(data)?data.length:0;
+    var last=list[0];
+    // tránh lưu backup trùng lặp liên tiếp nếu số lượng mục không đổi và cách nhau <5s
+    if(last&&last.count===count&&(Date.now()-last.ts)<5000) return;
+    list.unshift({ts:Date.now(),count:count,snapshot:{data:JSON.parse(JSON.stringify(data)),cats:JSON.parse(JSON.stringify(userCats)),results:[...userResults]}});
+    if(list.length>MAX_BACKUPS) list=list.slice(0,MAX_BACKUPS);
+    localStorage.setItem(LS_BACKUPS,JSON.stringify(list));
+  }catch(e){/* nếu đầy bộ nhớ thì bỏ qua, không ảnh hưởng lưu dữ liệu chính */}
+}
+function openBackupPanel(){
+  var list=[];
+  try{var raw=localStorage.getItem(LS_BACKUPS);if(raw)list=JSON.parse(raw)||[];}catch(e){list=[];}
+  var body=document.getElementById('backupListBody');
+  if(!body)return;
+  if(!list.length){body.innerHTML='<div style="padding:20px;color:#6B7280">Chưa có bản sao lưu nào.</div>';}
+  else{
+    body.innerHTML=list.map(function(b,i){
+      var d=new Date(b.ts);
+      var dstr=d.toLocaleString('vi-VN');
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #F3F4F6">'
+        +'<div><div style="font-weight:600">'+dstr+'</div><div style="color:#6B7280;font-size:13px">'+b.count+' mục công việc</div></div>'
+        +'<button class="btn btn-sm" onclick="restoreBackup('+i+')" style="color:var(--blue);border-color:#BFDBFE">Khôi phục</button>'
+        +'</div>';
+    }).join('');
+  }
+  document.getElementById('backupBg').classList.add('open');
+}
+function closeBackupPanel(){var el=document.getElementById('backupBg');if(el)el.classList.remove('open');}
+function restoreBackup(i){
+  var list=[];
+  try{var raw=localStorage.getItem(LS_BACKUPS);if(raw)list=JSON.parse(raw)||[];}catch(e){list=[];}
+  var b=list[i];
+  if(!b)return;
+  var d=new Date(b.ts);
+  if(!confirm('Khôi phục dữ liệu về thời điểm '+d.toLocaleString('vi-VN')+' ('+b.count+' mục)?\n\nDữ liệu hiện tại sẽ được thay thế.'))return;
+  data=JSON.parse(JSON.stringify(b.snapshot.data||[]));
+  userCats=JSON.parse(JSON.stringify(b.snapshot.cats||DEFAULT_CATS));
+  userResults=[...(b.snapshot.results||DEFAULT_RESULTS)];
+  deletedIds=[];
+  window._appStore={data:JSON.parse(JSON.stringify(data)),cats:JSON.parse(JSON.stringify(userCats)),results:[...userResults]};
+  try{localStorage.setItem(LS,JSON.stringify({data,cats:userCats,results:userResults}));}catch(e){}
+  closeBackupPanel();
+  renderStats();renderPills();render();updateDtBadge();updateNotifyBadge();
+  showToast('Đã khôi phục dữ liệu ✓');
 }
 const isDone=r=>r.done===true;
 
