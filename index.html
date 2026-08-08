@@ -21076,19 +21076,40 @@ function eviSwitchType(type){
     if(panel)panel.style.display=(t===type?'block':'none');
   });
 }
+// Thu nhỏ & nén ảnh trước khi lưu vào localStorage, tránh đầy bộ nhớ trình duyệt
+// (nguyên nhân khiến phiếu có đính ảnh bị "mất" sau khi Làm mới trang).
+function resizeImageDataUrl(dataUrl,maxDim,quality,cb){
+  try{
+    var img=new Image();
+    img.onload=function(){
+      var w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){
+        if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}
+        else{w=Math.round(w*maxDim/h);h=maxDim;}
+      }
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      try{cb(canvas.toDataURL('image/jpeg',quality||0.72));}catch(e){cb(dataUrl);}
+    };
+    img.onerror=function(){cb(dataUrl);};
+    img.src=dataUrl;
+  }catch(e){cb(dataUrl);}
+}
 function eviGalleryPreview(input){
   window._eviGalleryData=[];
   var preview=document.getElementById('eviGalleryPreview');if(preview)preview.innerHTML='';
   Array.from(input.files).forEach(function(file){
     var reader=new FileReader();
     reader.onload=function(ev){
-      window._eviGalleryData.push({name:file.name,data:ev.target.result});
+      resizeImageDataUrl(ev.target.result,1280,0.72,function(smallData){
+      window._eviGalleryData.push({name:file.name,data:smallData});
       if(!preview)return;
-      var img=document.createElement('img');img.src=ev.target.result;img.style.cssText='width:72px;height:72px;object-fit:cover;border-radius:6px;border:1.5px solid #D1D5DB';
+      var img=document.createElement('img');img.src=smallData;img.style.cssText='width:72px;height:72px;object-fit:cover;border-radius:6px;border:1.5px solid #D1D5DB';
       var wrap=document.createElement('div');wrap.style.position='relative';
       var del=document.createElement('button');del.innerHTML='x';del.type='button';del.style.cssText='position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#EF4444;color:#fff;border:none;font-size:10px;cursor:pointer;line-height:18px;padding:0';
       del.onclick=function(){var idx=window._eviGalleryData.findIndex(function(d){return d.name===file.name;});if(idx>-1)window._eviGalleryData.splice(idx,1);wrap.remove();};
       wrap.appendChild(img);wrap.appendChild(del);preview.appendChild(wrap);
+      });
     };reader.readAsDataURL(file);
   });
 }
@@ -21099,7 +21120,8 @@ function eviFilePreview(input){
   files.forEach(function(file){
     var reader=new FileReader();
     reader.onload=function(ev){
-      var item={name:file.name,size:file.size,data:ev.target.result};
+      var finish=function(finalData){
+      var item={name:file.name,size:file.size,data:finalData};
       window._eviFileList.push(item);
       if(!preview)return;
       var chip=document.createElement('span');
@@ -21109,6 +21131,9 @@ function eviFilePreview(input){
       del.style.cssText='border:none;background:#DBEAFE;color:#1E40AF;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;cursor:pointer;padding:0';
       del.onclick=function(){var idx=window._eviFileList.indexOf(item);if(idx>-1)window._eviFileList.splice(idx,1);chip.remove();};
       chip.appendChild(del);preview.appendChild(chip);
+      };
+      if(file.type&&file.type.indexOf('image/')===0){resizeImageDataUrl(ev.target.result,1280,0.72,finish);}
+      else{finish(ev.target.result);}
     };
     reader.readAsDataURL(file);
   });
@@ -21124,8 +21149,10 @@ function eviCameraStart(){
 function eviCameraSnap(){
   var video=document.getElementById('eviCameraVideo'),canvas=document.getElementById('eviCameraCanvas'),preview=document.getElementById('eviCameraPreview');
   if(!video||!canvas)return;
-  canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);
-  var dataUrl=canvas.toDataURL('image/jpeg',0.85);window._eviCameraData=dataUrl;
+  var maxDim=1280,vw=video.videoWidth,vh=video.videoHeight,w=vw,h=vh;
+  if(w>maxDim||h>maxDim){if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;}}
+  canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(video,0,0,w,h);
+  var dataUrl=canvas.toDataURL('image/jpeg',0.72);window._eviCameraData=dataUrl;
   if(preview){preview.src=dataUrl;preview.style.display='block';}video.style.display='none';
   var sn=document.getElementById('eviCameraSnapBtn'),re=document.getElementById('eviCameraRetakeBtn'),st=document.getElementById('eviCameraStopBtn');
   if(sn)sn.style.display='none';if(re)re.style.display='inline-flex';if(st)st.style.display='none';
@@ -21168,14 +21195,16 @@ function peviGalleryPreview(input){
   window._peviGalleryData=[];var preview=document.getElementById('peviGalleryPreview');if(preview)preview.innerHTML='';
   Array.from(input.files).forEach(function(file){
     var reader=new FileReader();reader.onload=function(ev){
-      window._peviGalleryData.push({name:file.name,data:ev.target.result});
+      resizeImageDataUrl(ev.target.result,1280,0.72,function(smallData){
+      window._peviGalleryData.push({name:file.name,data:smallData});
       if(!preview)return;
-      var img=document.createElement('img');img.src=ev.target.result;img.style.cssText='width:60px;height:60px;object-fit:cover;border-radius:5px;border:1.5px solid #D1D5DB;cursor:zoom-in';
+      var img=document.createElement('img');img.src=smallData;img.style.cssText='width:60px;height:60px;object-fit:cover;border-radius:5px;border:1.5px solid #D1D5DB;cursor:zoom-in';
       img.onclick=function(){openBase64Img(img.src);};
       var wrap=document.createElement('div');wrap.style.position='relative';
       var del=document.createElement('button');del.innerHTML='x';del.type='button';del.style.cssText='position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#EF4444;color:#fff;border:none;font-size:9px;cursor:pointer;line-height:16px;padding:0';
       del.onclick=function(){var idx=window._peviGalleryData.findIndex(function(d){return d.name===file.name;});if(idx>-1)window._peviGalleryData.splice(idx,1);wrap.remove();};
       wrap.appendChild(img);wrap.appendChild(del);preview.appendChild(wrap);
+      });
     };reader.readAsDataURL(file);
   });
 }
@@ -21211,8 +21240,10 @@ function peviCameraStart(){
 function peviCameraSnap(){
   var video=document.getElementById('peviCameraVideo'),canvas=document.getElementById('peviCameraCanvas'),preview=document.getElementById('peviCameraPreview');
   if(!video||!canvas)return;
-  canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);
-  var dataUrl=canvas.toDataURL('image/jpeg',0.85);window._peviCameraData=dataUrl;
+  var maxDim=1280,vw=video.videoWidth,vh=video.videoHeight,w=vw,h=vh;
+  if(w>maxDim||h>maxDim){if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;}}
+  canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(video,0,0,w,h);
+  var dataUrl=canvas.toDataURL('image/jpeg',0.72);window._peviCameraData=dataUrl;
   if(preview){preview.src=dataUrl;preview.style.display='block';}video.style.display='none';
   var sn=document.getElementById('peviCameraSnapBtn'),re=document.getElementById('peviCameraRetakeBtn'),st=document.getElementById('peviCameraStopBtn');
   if(sn)sn.style.display='none';if(re)re.style.display='inline-flex';if(st)st.style.display='none';
@@ -21476,7 +21507,14 @@ function saveAll(){
     }
   }catch(e){}
   window._appStore={data:JSON.parse(JSON.stringify(data)),cats:JSON.parse(JSON.stringify(userCats)),results:[...userResults]};
-  try{localStorage.setItem(LS,JSON.stringify({data,cats:userCats,results:userResults}));localStorage.removeItem('nhatky_cats_v1');localStorage.removeItem('nhatky_results_v1');}catch(e){}
+  try{
+    localStorage.setItem(LS,JSON.stringify({data,cats:userCats,results:userResults}));
+    localStorage.removeItem('nhatky_cats_v1');localStorage.removeItem('nhatky_results_v1');
+    window._lastSaveOk=true;
+  }catch(e){
+    window._lastSaveOk=false;
+    alert('⚠️ LƯU KHÔNG THÀNH CÔNG!\n\nBộ nhớ trình duyệt đã đầy (thường do ảnh minh chứng đính kèm quá nặng).\n\nPhiếu vừa nhập chỉ đang hiển thị TẠM trên màn hình, CHƯA được lưu thật sự. Nếu bấm "Làm mới" hoặc tắt trình duyệt lúc này, phiếu sẽ MẤT.\n\nCách khắc phục: mở lại phiếu vừa thêm, xoá bớt ảnh minh chứng (ưu tiên dùng link Google Drive thay vì đính ảnh trực tiếp), rồi lưu lại.');
+  }
   pushBackupSnapshot();
 }
 // Lưu một bản backup xoay vòng (tối đa MAX_BACKUPS bản) mỗi lần lưu dữ liệu,
@@ -22321,6 +22359,17 @@ function toggleDone(id){
 }
 
 function resetAllData(){
+  // Kiểm tra xem dữ liệu hiện tại đã thực sự được lưu vào bộ nhớ trình duyệt chưa,
+  // để tránh mất phiếu vừa nhập khi tải lại trang (ví dụ do ảnh minh chứng quá nặng làm đầy bộ nhớ).
+  try{
+    var raw=localStorage.getItem(LS);
+    var stored=raw?JSON.parse(raw):null;
+    var storedCount=stored&&Array.isArray(stored.data)?stored.data.length:0;
+    if(window._lastSaveOk===false||storedCount<data.length){
+      alert('⚠️ CHƯA THỂ TẢI LẠI TRANG!\n\nCó '+Math.max(1,data.length-storedCount)+' phiếu vừa nhập CHƯA được lưu vào bộ nhớ trình duyệt (thường do ảnh minh chứng đính kèm quá nặng, làm đầy bộ nhớ).\n\nNếu tải lại ngay bây giờ, (các) phiếu này sẽ MẤT.\n\nCách khắc phục: mở lại phiếu vừa thêm, xoá bớt ảnh minh chứng (ưu tiên dùng link Google Drive thay vì đính ảnh trực tiếp), rồi lưu lại trước khi bấm Làm mới.');
+      return;
+    }
+  }catch(e){}
   if(!confirm("🔄 Làm mới giao diện?\n\nDữ liệu của bạn sẽ được GIỮ NGUYÊN, chỉ tải lại trang để cập nhật hiển thị."))return;
   location.reload();
 }
