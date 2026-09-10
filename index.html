@@ -21793,7 +21793,8 @@ function openModal(id){
     var fi=document.getElementById('fEviGalleryInput');if(fi)fi.value='';
     var ff=document.getElementById('fEviFileInput');if(ff)ff.value='';
     try{eviSwitchType('link');}catch(e){}});
-    populateModalSelects(userCats[0]?.name||"Thiết bị","");
+    var _defCat=(activeCat&&activeCat!=="Tất cả"&&userCats.some(function(c){return c.name===activeCat;}))?activeCat:(userCats[0]?.name||"Thiết bị");
+    populateModalSelects(_defCat,"");
   }
   document.getElementById("modalBg").classList.add("open");
   setTimeout(()=>document.getElementById("fContent").focus(),150);
