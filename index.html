@@ -20539,22 +20539,70 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
 </head>
 <body>
 <script>
-// Xóa toàn bộ cache cũ ngay khi trang load
+// Di chuyển (migrate) dữ liệu cũ sang key hiện tại NẾU cần, rồi mới dọn key cũ.
+// KHÔNG BAO GIỜ xóa mù dữ liệu — chỉ xóa key cũ khi đã chắc chắn dữ liệu đó
+// không còn nhiều hơn dữ liệu đang có ở key hiện tại (an toàn).
 (function(){
-  var old=['nhatky_gmhs_v1','nhatky_gmhs_v2','nhatky_gmhs_v3','nhatky_gmhs_v4','nhatky_gmhs_v5','nhatky_gmhs_v6',
-           'nhatky_cats_v1','nhatky_results_v1'];
-  old.forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
-  // Nếu data cũ format mảng (v4) thì migrate sang v6
-  try{
-    var raw=localStorage.getItem('nhatky_gmhs_v6');
-    if(raw){
+  var CUR='nhatky_gmhs_v7';
+  var oldKeys=['nhatky_gmhs_v1','nhatky_gmhs_v2','nhatky_gmhs_v3','nhatky_gmhs_v4','nhatky_gmhs_v5','nhatky_gmhs_v6'];
+
+  function extractItems(raw){
+    try{
       var store=JSON.parse(raw);
-      if(Array.isArray(store)){
-        // format cũ lưu nhầm vào v6, xóa để load lại từ SEED
-        localStorage.removeItem('nhatky_gmhs_v6');
+      if(Array.isArray(store)) return store;
+      if(store&&Array.isArray(store.data)) return store.data;
+    }catch(e){}
+    return null;
+  }
+
+  // Số lượng mục đang có ở key hiện tại (v7)
+  var curItems=null;
+  try{ curItems=extractItems(localStorage.getItem(CUR)); }catch(e){}
+  var curCount=(curItems&&curItems.length)||0;
+
+  // Tìm trong các key cũ bản có NHIỀU mục nhất
+  var bestItems=null,bestKey=null,bestStore=null;
+  oldKeys.forEach(function(k){
+    try{
+      var raw=localStorage.getItem(k);
+      if(!raw) return;
+      var items=extractItems(raw);
+      if(items&&items.length>(bestItems?bestItems.length:0)){
+        bestItems=items;bestKey=k;
+        try{bestStore=JSON.parse(raw);}catch(e){bestStore=null;}
       }
-    }
-  }catch(e){}
+    }catch(e){}
+  });
+
+  // Nếu dữ liệu cũ nhiều hơn dữ liệu hiện tại -> di chuyển (migrate) sang v7 trước khi xóa
+  if(bestItems&&bestItems.length>curCount){
+    try{
+      var cats=(bestStore&&Array.isArray(bestStore.cats)&&bestStore.cats.length>0)?bestStore.cats:(curItems&&window._appStore&&window._appStore.cats)||null;
+      var results=(bestStore&&Array.isArray(bestStore.results)&&bestStore.results.length>0)?bestStore.results:null;
+      var payload={data:bestItems};
+      if(cats) payload.cats=cats;
+      if(results) payload.results=results;
+      localStorage.setItem(CUR,JSON.stringify(payload));
+      curCount=bestItems.length;
+    }catch(e){}
+  }
+
+  // Giờ mới dọn các key cũ — CHỈ xóa key nào có số mục <= dữ liệu hiện tại ở v7
+  // (nghĩa là không còn giá trị gì để giữ lại). Key nào có nhiều hơn thì GIỮ LẠI
+  // để lần sau còn cơ hội kiểm tra/khôi phục, không xóa mù.
+  oldKeys.forEach(function(k){
+    try{
+      var raw=localStorage.getItem(k);
+      if(!raw) return;
+      var items=extractItems(raw);
+      var cnt=(items&&items.length)||0;
+      if(cnt<=curCount){
+        localStorage.removeItem(k);
+      }
+    }catch(e){}
+  });
+  try{ localStorage.removeItem('nhatky_cats_v1'); }catch(e){}
+  try{ localStorage.removeItem('nhatky_results_v1'); }catch(e){}
 })();
 </script>
 <!-- ══ TOPBAR ══ -->
@@ -21793,8 +21841,7 @@ function openModal(id){
     var fi=document.getElementById('fEviGalleryInput');if(fi)fi.value='';
     var ff=document.getElementById('fEviFileInput');if(ff)ff.value='';
     try{eviSwitchType('link');}catch(e){}});
-    var _defCat=(activeCat&&activeCat!=="Tất cả"&&userCats.some(function(c){return c.name===activeCat;}))?activeCat:(userCats[0]?.name||"Thiết bị");
-    populateModalSelects(_defCat,"");
+    populateModalSelects(userCats[0]?.name||"Thiết bị","");
   }
   document.getElementById("modalBg").classList.add("open");
   setTimeout(()=>document.getElementById("fContent").focus(),150);
